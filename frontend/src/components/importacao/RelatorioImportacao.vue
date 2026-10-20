@@ -1,10 +1,21 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
+import { urlArquivoCorrecao } from '@/api/importacoes';
 import type { RelatorioImportacao } from '@/api/tipos';
 import ErroArquivoAlerta from '@/components/importacao/ErroArquivoAlerta.vue';
+import GruposOcorrencias from '@/components/importacao/GruposOcorrencias.vue';
+import TabelaOcorrencias from '@/components/importacao/TabelaOcorrencias.vue';
 import { formatarDataHora, formatarNumero, plural, STATUS_IMPORTACAO } from '@/utils/formatacao';
 
 const props = defineProps<{ relatorio: RelatorioImportacao }>();
+const emit = defineEmits<{ importarCorrigido: [] }>();
+
+const aba = ref<'erros' | 'avisos'>('erros');
+watch(
+  () => props.relatorio.id,
+  () => (aba.value = props.relatorio.totais.rejeitados > 0 ? 'erros' : 'avisos'),
+  { immediate: true },
+);
 
 const totais = computed(() => props.relatorio.totais);
 const importados = computed(() => totais.value.inseridos + totais.value.atualizados);
@@ -119,6 +130,85 @@ const temNovosCadastros = computed(
           Se algum nome estiver escrito errado, corrija na planilha e importe de novo.
         </p>
       </v-card>
+
+      <v-card v-if="totais.rejeitados > 0" variant="flat" border class="pa-5 correcao">
+        <div class="text-subtitle-1 font-weight-bold mb-3">Como corrigir as linhas com erro</div>
+        <ol class="passos text-body-2 mb-4">
+          <li>
+            Baixe o arquivo de correção. Ele traz só as
+            {{ plural(totais.rejeitados, 'linha recusada', 'linhas recusadas') }}, com os valores exatamente como vieram,
+            e uma coluna <code>erros_importacao</code> que explica o problema de cada linha.
+          </li>
+          <li>Abra no Excel e corrija os valores. A coluna <code>erros_importacao</code> pode ficar: ela é ignorada.</li>
+          <li>Importe o arquivo corrigido. As linhas já salvas não precisam ser enviadas de novo.</li>
+        </ol>
+        <div class="d-flex flex-wrap ga-2">
+          <v-btn
+            :href="urlArquivoCorrecao(relatorio.id)"
+            download
+            color="primary"
+            variant="flat"
+            prepend-icon="mdi-file-download"
+          >
+            Baixar linhas com erro
+          </v-btn>
+          <v-btn variant="outlined" color="primary" prepend-icon="mdi-file-upload" @click="emit('importarCorrigido')">
+            Importar arquivo corrigido
+          </v-btn>
+        </div>
+      </v-card>
+
+      <v-card v-if="totais.rejeitados > 0 || totais.avisos > 0" variant="flat" border>
+        <v-tabs v-model="aba" color="primary" class="border-b">
+          <v-tab value="erros" :disabled="totais.rejeitados === 0">
+            <v-icon icon="mdi-alert-circle-outline" start />
+            Erros
+            <v-chip size="x-small" class="ms-2" color="error" variant="tonal">{{ formatarNumero(relatorio.erros.length) }}</v-chip>
+          </v-tab>
+          <v-tab value="avisos" :disabled="totais.avisos === 0">
+            <v-icon icon="mdi-information-outline" start />
+            Avisos
+            <v-chip size="x-small" class="ms-2" color="warning" variant="tonal">{{ formatarNumero(totais.avisos) }}</v-chip>
+          </v-tab>
+        </v-tabs>
+
+        <v-window v-model="aba">
+          <v-window-item value="erros" class="pa-4">
+            <p class="text-body-2 text-medium-emphasis mb-3">
+              Linhas com erro não foram salvas. Os problemas estão agrupados por tipo: corrija um grupo de uma vez.
+            </p>
+            <GruposOcorrencias :grupos="relatorio.gruposErros" tipo="erro" />
+            <div class="text-subtitle-2 font-weight-bold mt-6 mb-2">Todas as ocorrências, linha a linha</div>
+            <TabelaOcorrencias :ocorrencias="relatorio.erros" />
+          </v-window-item>
+
+          <v-window-item value="avisos" class="pa-4">
+            <p class="text-body-2 text-medium-emphasis mb-3">
+              Avisos não impedem a importação: a linha foi salva, mas vale conferir o que o sistema ajustou.
+            </p>
+            <GruposOcorrencias :grupos="relatorio.gruposAvisos" tipo="aviso" />
+            <div class="text-subtitle-2 font-weight-bold mt-6 mb-2">Todas as ocorrências, linha a linha</div>
+            <TabelaOcorrencias :ocorrencias="relatorio.avisos" />
+          </v-window-item>
+        </v-window>
+      </v-card>
     </template>
   </div>
 </template>
+
+<style scoped>
+.correcao {
+  border-left: 4px solid rgb(var(--v-theme-primary)) !important;
+}
+.passos {
+  padding-left: 1.25rem;
+}
+.passos li + li {
+  margin-top: 0.375rem;
+}
+code {
+  background: rgba(var(--v-theme-on-surface), 0.06);
+  border-radius: 4px;
+  padding: 1px 4px;
+}
+</style>

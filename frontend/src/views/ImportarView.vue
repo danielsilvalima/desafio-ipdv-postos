@@ -116,15 +116,12 @@ async function novaImportacao() {
     </template>
 
     <template v-else-if="relatorio">
-      <RelatorioImportacao :relatorio="relatorio">
+      <RelatorioImportacao :relatorio="relatorio" @importar-corrigido="novaImportacao">
         <template #acoes-cabecalho>
           <v-btn variant="text" prepend-icon="mdi-file-upload" @click="novaImportacao">Importar outro arquivo</v-btn>
+          <v-btn to="/postos" variant="text" color="primary" prepend-icon="mdi-gas-station">Ver postos</v-btn>
         </template>
       </RelatorioImportacao>
-
-      <div class="d-flex flex-wrap ga-2 mt-4">
-        <v-btn to="/postos" color="primary" variant="flat" prepend-icon="mdi-gas-station">Ver postos</v-btn>
-      </div>
     </template>
   </v-container>
 </template>
