@@ -18,8 +18,16 @@ export async function importarCsv(
   return data;
 }
 
-export async function listarImportacoes(pagina: number, porPagina: number): Promise<Pagina<ImportacaoResumo>> {
-  const { data } = await api.get<Pagina<ImportacaoResumo>>('/importacoes', { params: { pagina, porPagina } });
+export async function listarImportacoes(
+  pagina: number,
+  porPagina: number,
+  signal?: AbortSignal,
+): Promise<Pagina<ImportacaoResumo>> {
+  const { data } = await api.get<Pagina<ImportacaoResumo>>('/importacoes', {
+    params: { pagina, porPagina },
+    signal,
+    silencioso: true,
+  });
   return data;
 }
 

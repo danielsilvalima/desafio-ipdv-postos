@@ -14,6 +14,19 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/ImportarView.vue'),
     meta: { titulo: 'Importar planilha' },
   },
+  {
+    path: '/importacoes',
+    name: 'historico',
+    component: () => import('@/views/HistoricoView.vue'),
+    meta: { titulo: 'Histórico de importações' },
+  },
+  {
+    path: '/importacoes/:id(\\d+)',
+    name: 'importacao',
+    component: () => import('@/views/ImportacaoDetalheView.vue'),
+    props: true,
+    meta: { titulo: 'Importação' },
+  },
   { path: '/:caminho(.*)*', redirect: '/postos' },
 ];
 

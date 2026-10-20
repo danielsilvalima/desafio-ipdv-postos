@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
+import { useRoute } from 'vue-router';
 import { api } from '@/api/cliente';
 import AppNotificacoes from '@/components/AppNotificacoes.vue';
 
@@ -16,7 +17,12 @@ const INDICADOR: Record<StatusApi, { cor: string; texto: string }> = {
 const MENU = [
   { titulo: 'Postos', icone: 'mdi-gas-station', para: '/postos' },
   { titulo: 'Importar', icone: 'mdi-file-upload', para: '/importar' },
+  { titulo: 'Histórico', icone: 'mdi-history', para: '/importacoes' },
 ];
+
+const rota = useRoute();
+/** O detalhe (/importacoes/:id) não é rota filha, então a aba é escolhida pelo início do caminho. */
+const abaAtiva = computed(() => MENU.find((item) => rota.path.startsWith(item.para))?.para);
 
 onMounted(async () => {
   try {
@@ -45,8 +51,8 @@ onMounted(async () => {
       </template>
 
       <template #extension>
-        <v-tabs color="white" slider-color="secondary" class="px-2">
-          <v-tab v-for="item in MENU" :key="item.para" :to="item.para" :prepend-icon="item.icone">
+        <v-tabs :model-value="abaAtiva" color="white" slider-color="secondary" class="px-2">
+          <v-tab v-for="item in MENU" :key="item.para" :value="item.para" :to="item.para" :prepend-icon="item.icone">
             {{ item.titulo }}
           </v-tab>
         </v-tabs>
