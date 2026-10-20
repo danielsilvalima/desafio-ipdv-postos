@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { ErroApi } from '@/api/cliente';
-import { listarPostos } from '@/api/postos';
+import { listarPostos, URL_EXPORTACAO_POSTOS } from '@/api/postos';
 import type { CampoOrdenacaoPosto, Posto } from '@/api/tipos';
 import PostoDetalhesDialog from '@/components/postos/PostoDetalhesDialog.vue';
 import { formatarNumero, mascararCnpj, mascararCpf, plural, STATUS_POSTO } from '@/utils/formatacao';
@@ -106,6 +106,17 @@ function abrirDetalhes(_evento: unknown, { item }: { item: Posto }) {
           {{ resumo }}
         </p>
       </div>
+      <v-btn
+        v-if="!baseVazia"
+        :href="URL_EXPORTACAO_POSTOS"
+        download
+        variant="outlined"
+        color="primary"
+        prepend-icon="mdi-file-export"
+        title="Baixa todos os postos cadastrados no mesmo formato da importação"
+      >
+        Exportar CSV
+      </v-btn>
     </div>
 
     <v-card v-if="baseVazia" variant="flat" border>
