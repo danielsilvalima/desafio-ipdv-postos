@@ -1,22 +1,26 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
+import { api } from '@/api/cliente';
+import AppNotificacoes from '@/components/AppNotificacoes.vue';
 
-type ApiStatus = 'verificando' | 'online' | 'offline';
+type StatusApi = 'verificando' | 'online' | 'offline';
 
-const apiStatus = ref<ApiStatus>('verificando');
+const statusApi = ref<StatusApi>('verificando');
 
-const statusChip: Record<ApiStatus, { color: string; text: string }> = {
-  verificando: { color: 'grey', text: 'Verificando API...' },
-  online: { color: 'success', text: 'API online' },
-  offline: { color: 'error', text: 'API indisponível' },
+const INDICADOR: Record<StatusApi, { cor: string; texto: string }> = {
+  verificando: { cor: 'grey-lighten-1', texto: 'Verificando API' },
+  online: { cor: 'success', texto: 'API online' },
+  offline: { cor: 'error', texto: 'API indisponível' },
 };
+
+const MENU = [{ titulo: 'Postos', icone: 'mdi-gas-station', para: '/postos' }];
 
 onMounted(async () => {
   try {
-    const response = await fetch('/api/health');
-    apiStatus.value = response.ok ? 'online' : 'offline';
+    await api.get('/health', { silencioso: true });
+    statusApi.value = 'online';
   } catch {
-    apiStatus.value = 'offline';
+    statusApi.value = 'offline';
   }
 });
 </script>
@@ -27,23 +31,29 @@ onMounted(async () => {
       <template #prepend>
         <v-icon icon="mdi-gas-station" class="ms-2" />
       </template>
-      <v-app-bar-title>Postos de Combustível</v-app-bar-title>
+      <v-app-bar-title class="font-weight-bold">Postos de Combustível</v-app-bar-title>
+
       <template #append>
-        <v-chip :color="statusChip[apiStatus].color" variant="flat" size="small" class="me-2">
-          {{ statusChip[apiStatus].text }}
-        </v-chip>
+        <v-tooltip :text="INDICADOR[statusApi].texto" location="bottom">
+          <template #activator="{ props }">
+            <v-icon v-bind="props" icon="mdi-circle" size="12" :color="INDICADOR[statusApi].cor" class="me-4" />
+          </template>
+        </v-tooltip>
+      </template>
+
+      <template #extension>
+        <v-tabs color="white" slider-color="secondary" class="px-2">
+          <v-tab v-for="item in MENU" :key="item.para" :to="item.para" :prepend-icon="item.icone">
+            {{ item.titulo }}
+          </v-tab>
+        </v-tabs>
       </template>
     </v-app-bar>
 
     <v-main>
-      <v-container class="py-8" max-width="960">
-        <v-card variant="outlined">
-          <v-card-item>
-            <v-card-title>Ambiente pronto</v-card-title>
-            <v-card-subtitle>Importação, listagem e exportação de postos serão adicionadas nas próximas etapas.</v-card-subtitle>
-          </v-card-item>
-        </v-card>
-      </v-container>
+      <router-view />
     </v-main>
+
+    <AppNotificacoes />
   </v-app>
 </template>
