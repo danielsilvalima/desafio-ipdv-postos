@@ -13,7 +13,10 @@ const INDICADOR: Record<StatusApi, { cor: string; texto: string }> = {
   offline: { cor: 'error', texto: 'API indisponível' },
 };
 
-const MENU = [{ titulo: 'Postos', icone: 'mdi-gas-station', para: '/postos' }];
+const MENU = [
+  { titulo: 'Postos', icone: 'mdi-gas-station', para: '/postos' },
+  { titulo: 'Importar', icone: 'mdi-file-upload', para: '/importar' },
+];
 
 onMounted(async () => {
   try {

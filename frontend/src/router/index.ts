@@ -8,6 +8,12 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/PostosView.vue'),
     meta: { titulo: 'Postos' },
   },
+  {
+    path: '/importar',
+    name: 'importar',
+    component: () => import('@/views/ImportarView.vue'),
+    meta: { titulo: 'Importar planilha' },
+  },
   { path: '/:caminho(.*)*', redirect: '/postos' },
 ];
 
