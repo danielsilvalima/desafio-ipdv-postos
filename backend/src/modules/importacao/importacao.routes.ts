@@ -2,6 +2,7 @@ import { Router, type RequestHandler, type Response } from 'express';
 import multer from 'multer';
 import { pool } from '../../db/pool.js';
 import { AppError } from '../../shared/errors/app-error.js';
+import { lerPaginacao, MAIOR_INTEIRO_PG } from '../../shared/http/paginacao.js';
 import { gerarCsvCorrecao, gerarCsvModelo } from './arquivos-csv.js';
 import { ErroArquivo } from './erros-arquivo.js';
 import {
@@ -47,16 +48,6 @@ function nomeOriginal(arquivo: Express.Multer.File): string {
   return Buffer.from(arquivo.originalname, 'latin1').toString('utf8');
 }
 
-const MAIOR_INTEIRO_PG = 2_147_483_647;
-const POR_PAGINA_PADRAO = 20;
-const POR_PAGINA_MAXIMO = 100;
-
-function inteiroPositivo(valor: unknown, padrao: number, maximo = MAIOR_INTEIRO_PG): number {
-  const numero = typeof valor === 'string' && /^\d+$/.test(valor) ? Number(valor) : NaN;
-  if (!Number.isSafeInteger(numero) || numero < 1) return padrao;
-  return Math.min(numero, maximo);
-}
-
 /** Id fora do formato também é "não encontrado": a URL não aponta para nenhuma importação. */
 function idDaImportacao(valor: string | undefined): number {
   const id = /^\d{1,10}$/.test(valor ?? '') ? Number(valor) : NaN;
@@ -73,8 +64,7 @@ function enviarCsv(res: Response, nomeArquivo: string, conteudo: string): void {
 export const importacaoRouter = Router();
 
 importacaoRouter.get('/', async (req, res) => {
-  const pagina = inteiroPositivo(req.query.pagina, 1);
-  const porPagina = inteiroPositivo(req.query.porPagina, POR_PAGINA_PADRAO, POR_PAGINA_MAXIMO);
+  const { pagina, porPagina } = lerPaginacao(req.query);
   const { itens, total } = await listarHistorico(pool, pagina, porPagina);
   res.json({ itens, total, pagina, porPagina });
 });
