@@ -27,7 +27,7 @@ interface DefinicaoMensagem {
   dica?: (ctx: Contexto) => string | undefined;
 }
 
-const EXEMPLOS_DOCUMENTO: Record<string, { digitos: string; mascara: string }> = {
+export const EXEMPLOS_DOCUMENTO: Record<string, { digitos: string; mascara: string }> = {
   cnpj: { digitos: '01234567000189', mascara: '01.234.567/0001-89' },
   cpf_responsavel: { digitos: '01234567890', mascara: '012.345.678-90' },
   cep: { digitos: '01310100', mascara: '01310-100' },

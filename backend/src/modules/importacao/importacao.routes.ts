@@ -1,8 +1,16 @@
-import { Router, type RequestHandler } from 'express';
+import { Router, type RequestHandler, type Response } from 'express';
 import multer from 'multer';
 import { pool } from '../../db/pool.js';
+import { AppError } from '../../shared/errors/app-error.js';
+import { gerarCsvCorrecao, gerarCsvModelo } from './arquivos-csv.js';
 import { ErroArquivo } from './erros-arquivo.js';
-import { importarCsv } from './importacao.service.js';
+import {
+  buscarRelatorio,
+  importacaoNaoEncontrada,
+  importarCsv,
+  linhasParaCorrecao,
+  listarHistorico,
+} from './importacao.service.js';
 
 const TAMANHO_MAXIMO_MB = 20;
 
@@ -39,7 +47,54 @@ function nomeOriginal(arquivo: Express.Multer.File): string {
   return Buffer.from(arquivo.originalname, 'latin1').toString('utf8');
 }
 
+const MAIOR_INTEIRO_PG = 2_147_483_647;
+const POR_PAGINA_PADRAO = 20;
+const POR_PAGINA_MAXIMO = 100;
+
+function inteiroPositivo(valor: unknown, padrao: number, maximo = MAIOR_INTEIRO_PG): number {
+  const numero = typeof valor === 'string' && /^\d+$/.test(valor) ? Number(valor) : NaN;
+  if (!Number.isSafeInteger(numero) || numero < 1) return padrao;
+  return Math.min(numero, maximo);
+}
+
+/** Id fora do formato também é "não encontrado": a URL não aponta para nenhuma importação. */
+function idDaImportacao(valor: string | undefined): number {
+  const id = /^\d{1,10}$/.test(valor ?? '') ? Number(valor) : NaN;
+  if (!Number.isInteger(id) || id < 1 || id > MAIOR_INTEIRO_PG) throw importacaoNaoEncontrada();
+  return id;
+}
+
+function enviarCsv(res: Response, nomeArquivo: string, conteudo: string): void {
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${nomeArquivo}"`);
+  res.send(conteudo);
+}
+
 export const importacaoRouter = Router();
+
+importacaoRouter.get('/', async (req, res) => {
+  const pagina = inteiroPositivo(req.query.pagina, 1);
+  const porPagina = inteiroPositivo(req.query.porPagina, POR_PAGINA_PADRAO, POR_PAGINA_MAXIMO);
+  const { itens, total } = await listarHistorico(pool, pagina, porPagina);
+  res.json({ itens, total, pagina, porPagina });
+});
+
+importacaoRouter.get('/modelo.csv', (_req, res) => {
+  enviarCsv(res, 'modelo-importacao-postos.csv', gerarCsvModelo());
+});
+
+importacaoRouter.get('/:id', async (req, res) => {
+  res.json(await buscarRelatorio(pool, idDaImportacao(req.params.id)));
+});
+
+importacaoRouter.get('/:id/linhas-rejeitadas.csv', async (req, res) => {
+  const id = idDaImportacao(req.params.id);
+  const { linhas } = await linhasParaCorrecao(pool, id);
+  if (linhas.length === 0) {
+    throw new AppError(404, 'SEM_LINHAS_REJEITADAS', 'Esta importação não tem linhas com erro para corrigir.');
+  }
+  enviarCsv(res, `correcao-importacao-${id}.csv`, gerarCsvCorrecao(linhas));
+});
 
 importacaoRouter.post('/', receberArquivo, async (req, res) => {
   if (!req.file) {
