@@ -83,14 +83,23 @@ export function lerCsv(buffer: Buffer): CsvLido {
       delimiter: delimitador,
       bom: true,
       relax_column_count: true,
+      // Aspas no meio de um texto sem aspas (ex.: Posto "Bom") são mantidas como caractere comum.
+      relax_quotes: true,
       skip_empty_lines: false,
     }) as string[][];
   } catch (err) {
-    const { lines } = err as { lines?: number };
-    throw new ErroArquivo('CSV_MALFORMADO', 'Não foi possível ler o CSV: há aspas abertas que não foram fechadas.', {
-      dica: `Confira as aspas perto da linha ${lines ?? '?'} da planilha. Todo texto que começa com aspas precisa terminar com aspas.`,
-      ...(lines ? { linha: lines } : {}),
-    });
+    const { code, lines } = err as { code?: string; lines?: number };
+    const perto = lines ? ` perto da linha ${lines} da planilha` : '';
+    throw new ErroArquivo(
+      'CSV_MALFORMADO',
+      code === 'CSV_QUOTE_NOT_CLOSED'
+        ? 'Não foi possível ler o CSV: há aspas abertas que não foram fechadas.'
+        : 'Não foi possível ler o CSV: há aspas em posição inválida.',
+      {
+        dica: `Confira as aspas${perto}. Todo texto que começa com aspas precisa terminar com aspas, logo antes do separador.`,
+        ...(lines ? { linha: lines } : {}),
+      },
+    );
   }
 
   const [cabecalho, ...restante] = linhas;
