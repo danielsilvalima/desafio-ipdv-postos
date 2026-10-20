@@ -48,21 +48,35 @@ function escaparLike(texto: string): string {
   return texto.replace(/[\\%_]/g, (caractere) => `\\${caractere}`);
 }
 
-/** Busca por nome, município ou bandeira (sem acento e sem caixa) e, se o termo for numérico, por CNPJ. */
+const COLUNAS_BUSCA = ['p.razao_social', 'p.nome_fantasia', 'p.municipio', 'b.nome'];
+const MAXIMO_PALAVRAS_BUSCA = 6;
+
+/**
+ * Cada palavra precisa aparecer em algum campo: "florianopolis repsol" encontra os postos Repsol de Florianópolis.
+ * Nomes, município e bandeira são comparados sem acento e sem caixa; palavra numérica também procura no CNPJ.
+ */
 function montarFiltro(busca: string | null): { where: string; params: string[] } {
   if (!busca) return { where: '', params: [] };
 
-  const params = [`%${escaparLike(busca)}%`];
-  const condicoes = ['p.razao_social', 'p.nome_fantasia', 'p.municipio', 'b.nome'].map(
-    (coluna) => `normalizar_nome(${coluna}) LIKE normalizar_nome($1)`,
-  );
+  const params: string[] = [];
+  const grupos = busca
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, MAXIMO_PALAVRAS_BUSCA)
+    .map((palavra) => {
+      params.push(`%${escaparLike(palavra)}%`);
+      const indiceTexto = params.length;
+      const condicoes = COLUNAS_BUSCA.map((coluna) => `normalizar_nome(${coluna}) LIKE normalizar_nome($${indiceTexto})`);
 
-  const digitos = busca.replace(/[.\-/\s]/g, '');
-  if (/^\d+$/.test(digitos)) {
-    params.push(`%${digitos}%`);
-    condicoes.push('p.cnpj LIKE $2');
-  }
-  return { where: `WHERE ${condicoes.join(' OR ')}`, params };
+      const digitos = palavra.replace(/[.\-/]/g, '');
+      if (/^\d+$/.test(digitos)) {
+        params.push(`%${digitos}%`);
+        condicoes.push(`p.cnpj LIKE $${params.length}`);
+      }
+      return `(${condicoes.join(' OR ')})`;
+    });
+
+  return { where: `WHERE ${grupos.join(' AND ')}`, params };
 }
 
 export async function listarPostos(pool: Pool, filtros: FiltrosListagem): Promise<Pagina<PostoListagem>> {

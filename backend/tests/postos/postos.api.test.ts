@@ -104,6 +104,11 @@ describe.skipIf(!inject('bancoDisponivel'))('API de postos', () => {
       expect((await listar('?busca=inexistente')).body).toMatchObject({ total: 0, itens: [] });
     });
 
+    it('com várias palavras, exige que cada uma apareça em algum campo', async () => {
+      expect(razoes(await listar('?busca=curitiba%20raizen'))).toEqual(['Comercial Carvalho']);
+      expect(razoes(await listar('?busca=curitiba%20shell'))).toEqual([]);
+    });
+
     it('trata % e _ da busca como texto, não como curinga', async () => {
       expect(razoes(await listar('?busca=%25'))).toEqual(['Posto Beta 100%_x']);
       expect(razoes(await listar('?busca=_'))).toEqual(['Posto Beta 100%_x']);
