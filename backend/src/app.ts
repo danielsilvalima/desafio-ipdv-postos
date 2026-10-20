@@ -1,5 +1,6 @@
 import express from 'express';
 import { pool } from './db/pool.js';
+import { importacaoRouter } from './modules/importacao/importacao.routes.js';
 import { errorHandler, notFoundHandler } from './shared/errors/error-handler.js';
 
 export function createApp() {
@@ -12,6 +13,8 @@ export function createApp() {
     await pool.query('SELECT 1');
     res.json({ status: 'ok' });
   });
+
+  app.use('/api/importacoes', importacaoRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

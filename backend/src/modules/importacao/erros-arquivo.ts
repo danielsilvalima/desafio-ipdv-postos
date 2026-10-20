@@ -42,4 +42,9 @@ export class ErroArquivo extends AppError {
   get detalhes(): DetalhesErroArquivo {
     return this.details as DetalhesErroArquivo;
   }
+
+  /** Mesmo erro, com o id do registro de falha no histórico para o usuário consultar depois. */
+  comImportacao(importacaoId: number): ErroArquivo {
+    return new ErroArquivo(this.codigoArquivo, this.message, { ...this.detalhes, importacaoId });
+  }
 }
