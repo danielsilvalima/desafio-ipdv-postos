@@ -161,10 +161,51 @@ export interface PostoParaGravar {
   combustivelIds: number[];
 }
 
-/** Insere ou atualiza pelo CNPJ e substitui a lista de combustíveis, preservando a ordem do arquivo. */
+/**
+ * Deixa a lista de combustíveis de cada posto igual à do arquivo gravando só a diferença.
+ * Apagar e inserir tudo de novo custaria uma checagem de chave estrangeira por vínculo a cada reimportação.
+ * Concorrência: o upsert dos postos já travou essas linhas, então outra importação do mesmo posto espera.
+ */
+async function sincronizarCombustiveis(
+  db: Executor,
+  todosPostoIds: number[],
+  postoIds: number[],
+  combustivelIds: number[],
+  ordens: number[],
+): Promise<void> {
+  await db.query(
+    `DELETE FROM posto_combustiveis atual
+      WHERE atual.posto_id = ANY($1::int[])
+        AND NOT EXISTS (
+          SELECT 1 FROM unnest($2::int[], $3::int[]) AS novo(posto_id, combustivel_id)
+           WHERE novo.posto_id = atual.posto_id AND novo.combustivel_id = atual.combustivel_id
+        )`,
+    [todosPostoIds, postoIds, combustivelIds],
+  );
+  await db.query(
+    `UPDATE posto_combustiveis atual SET ordem = novo.ordem
+       FROM unnest($1::int[], $2::int[], $3::smallint[]) AS novo(posto_id, combustivel_id, ordem)
+      WHERE novo.posto_id = atual.posto_id AND novo.combustivel_id = atual.combustivel_id
+        AND atual.ordem <> novo.ordem`,
+    [postoIds, combustivelIds, ordens],
+  );
+  await db.query(
+    `INSERT INTO posto_combustiveis (posto_id, combustivel_id, ordem)
+     SELECT novo.posto_id, novo.combustivel_id, novo.ordem
+       FROM unnest($1::int[], $2::int[], $3::smallint[]) AS novo(posto_id, combustivel_id, ordem)
+      WHERE NOT EXISTS (
+        SELECT 1 FROM posto_combustiveis atual
+         WHERE atual.posto_id = novo.posto_id AND atual.combustivel_id = novo.combustivel_id
+      )`,
+    [postoIds, combustivelIds, ordens],
+  );
+}
+
+/** Insere ou atualiza pelo CNPJ e sincroniza a lista de combustíveis, preservando a ordem do arquivo. */
 export async function upsertPostos(db: Executor, itens: PostoParaGravar[]): Promise<ResultadoUpsertPostos> {
   let inseridos = 0;
   let atualizados = 0;
+  const idPorCnpj = new Map<string, number>();
 
   for (const lote of emLotes(itens)) {
     const coluna = <T>(f: (item: PostoParaGravar) => T) => lote.map(f);
@@ -207,32 +248,27 @@ export async function upsertPostos(db: Executor, itens: PostoParaGravar[]): Prom
       ],
     );
 
-    const idPorCnpj = new Map<string, number>();
     for (const row of rows) {
       idPorCnpj.set(row.cnpj, row.id);
       if (row.inserido) inseridos += 1;
       else atualizados += 1;
     }
-
-    const postoIds: number[] = [];
-    const combustivelIds: number[] = [];
-    const ordens: number[] = [];
-    for (const item of lote) {
-      const postoId = idPorCnpj.get(item.posto.cnpj)!;
-      item.combustivelIds.forEach((combustivelId, indice) => {
-        postoIds.push(postoId);
-        combustivelIds.push(combustivelId);
-        ordens.push(indice + 1);
-      });
-    }
-
-    await db.query('DELETE FROM posto_combustiveis WHERE posto_id = ANY($1::int[])', [[...idPorCnpj.values()]]);
-    await db.query(
-      `INSERT INTO posto_combustiveis (posto_id, combustivel_id, ordem)
-       SELECT * FROM unnest($1::int[], $2::int[], $3::smallint[])`,
-      [postoIds, combustivelIds, ordens],
-    );
   }
+
+  // Uma única sincronização para o arquivo inteiro: cada consulta percorre a tabela de vínculos uma vez só,
+  // em vez de uma vez por lote.
+  const postoIds: number[] = [];
+  const combustivelIds: number[] = [];
+  const ordens: number[] = [];
+  for (const item of itens) {
+    const postoId = idPorCnpj.get(item.posto.cnpj)!;
+    item.combustivelIds.forEach((combustivelId, indice) => {
+      postoIds.push(postoId);
+      combustivelIds.push(combustivelId);
+      ordens.push(indice + 1);
+    });
+  }
+  await sincronizarCombustiveis(db, [...idPorCnpj.values()], postoIds, combustivelIds, ordens);
 
   return { inseridos, atualizados };
 }
