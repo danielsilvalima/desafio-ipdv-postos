@@ -19,6 +19,9 @@ const PARAMETROS_COMPLETOS = {
   nome: 'Etanol',
   linhaMantida: 12,
   campos: 'nome, e-mail',
+  recebidas: 23,
+  esperadas: 21,
+  delimitador: ';',
 };
 
 describe('catálogo de mensagens', () => {

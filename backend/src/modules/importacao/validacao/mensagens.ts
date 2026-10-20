@@ -133,6 +133,13 @@ const ERROS: Record<CodigoErro, DefinicaoMensagem> = {
     mensagem: (c) => `"${c.valor}" não é um status válido.`,
     dica: () => 'Use um destes valores: ativo, inativo ou em_implantacao.',
   },
+  LINHA_COLUNAS_A_MAIS: {
+    titulo: () => 'Linha com mais colunas que o cabeçalho',
+    mensagem: (c) =>
+      `A linha tem ${c.params.recebidas} colunas, mas o cabeçalho tem ${c.params.esperadas}. Os valores ficaram deslocados e a linha não pôde ser lida.`,
+    dica: (c) =>
+      `Provavelmente algum campo contém "${c.params.delimitador}" sem estar entre aspas. Remova o caractere ou coloque o texto entre aspas.`,
+  },
 };
 
 const AVISOS: Record<CodigoAviso, DefinicaoMensagem> = {
@@ -161,6 +168,11 @@ const AVISOS: Record<CodigoAviso, DefinicaoMensagem> = {
   COLUNA_DESCONHECIDA: {
     titulo: () => 'Coluna fora do modelo ignorada',
     mensagem: (c) => `A coluna "${c.valor}" não faz parte do modelo e foi ignorada.`,
+  },
+  COLUNA_OPCIONAL_AUSENTE: {
+    titulo: () => 'Coluna opcional ausente',
+    mensagem: (c) => `O arquivo não tem a coluna "${c.campo}" (${c.rotulo}). Esse campo ficou vazio em todos os postos.`,
+    dica: () => 'Se quiser preencher esse campo, inclua a coluna com o nome exato do modelo.',
   },
 };
 
