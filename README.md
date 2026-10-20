@@ -119,7 +119,11 @@ npm run gerar:csv -- 10000 --com-erros     # cerca de 3% das linhas com erros pr
 
 Os arquivos vão para `samples/gerados/`, que fica fora do git. Os dados são fictícios e reproduzíveis: a mesma quantidade gera sempre o mesmo arquivo. Os CNPJs e CPFs gerados têm dígito verificador válido e incluem casos com zero à esquerda.
 
-Na máquina de desenvolvimento, reimportar 10 mil postos leva cerca de 2 segundos.
+Na máquina de desenvolvimento, com a API em modo dev, os tempos medidos com 10 mil postos foram:
+
+- primeira importação, com todos os postos novos: cerca de 6 s;
+- reimportação, atualizando os mesmos postos: de 2 a 3 s;
+- exportação completa: menos de 1 s.
 
 ## API
 
