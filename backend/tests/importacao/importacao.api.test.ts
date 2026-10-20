@@ -1,49 +1,17 @@
 import request from 'supertest';
 import { afterAll, beforeEach, describe, expect, inject, it } from 'vitest';
-import { createApp } from '../../src/app.js';
-import { env } from '../../src/config/env.js';
-import { runSeeds } from '../../src/db/migrator.js';
 import { pool } from '../../src/db/pool.js';
 import { lerCsv } from '../../src/modules/importacao/csv/leitor-csv.js';
 import { montarCsv } from '../../src/shared/csv/escritor-csv.js';
+import { app, baixar, importar } from '../helpers/api.js';
+import { contar, garantirBancoDeTeste, limparBanco } from '../helpers/banco.js';
 import { ARQUIVO_EXEMPLO, csvDe, linhaValida } from '../helpers/csv.js';
 
-const app = createApp();
 const INDICE_CEP = 10;
 
-function importar(conteudo: Buffer, nome = 'postos.csv') {
-  return request(app).post('/api/importacoes').attach('arquivo', conteudo, nome);
-}
-
-/** Lê o corpo de um download de CSV como Buffer, sem depender do parser padrão do supertest. */
-function baixar(url: string) {
-  return request(app)
-    .get(url)
-    .buffer(true)
-    .parse((res, callback) => {
-      const partes: Buffer[] = [];
-      res.on('data', (parte: Buffer) => partes.push(parte));
-      res.on('end', () => callback(null, Buffer.concat(partes)));
-    });
-}
-
-async function contar(tabela: string): Promise<number> {
-  const { rows } = await pool.query<{ total: number }>(`SELECT count(*)::int AS total FROM ${tabela}`);
-  return rows[0]!.total;
-}
-
 describe.skipIf(!inject('bancoDisponivel'))('API de importação', () => {
-  if (!env.databaseUrl.endsWith('_test')) {
-    throw new Error(`Os testes de integração só rodam em banco "_test". Recebido: ${env.databaseUrl}`);
-  }
-
-  beforeEach(async () => {
-    await pool.query(
-      `TRUNCATE importacao_linhas_rejeitadas, importacoes, posto_combustiveis, postos, responsaveis,
-                bandeiras, combustiveis RESTART IDENTITY CASCADE`,
-    );
-    await runSeeds(pool);
-  });
+  garantirBancoDeTeste();
+  beforeEach(limparBanco);
 
   afterAll(async () => {
     await pool.end();
@@ -128,6 +96,17 @@ describe.skipIf(!inject('bancoDisponivel'))('API de importação', () => {
     await importar(csvDe([linhaValida({ combustiveis: 'Diesel S10' })]));
 
     expect(await contar('posto_combustiveis')).toBe(1);
+  });
+
+  it('reimportação reordena, acrescenta e remove combustíveis conforme o arquivo', async () => {
+    await importar(csvDe([linhaValida({ combustiveis: 'Gasolina Comum, Etanol, GNV' })]));
+    await importar(csvDe([linhaValida({ combustiveis: 'GNV, Diesel S10, Gasolina Comum' })]));
+
+    const { rows } = await pool.query<{ nomes: string }>(
+      `SELECT string_agg(c.nome, ', ' ORDER BY pc.ordem) AS nomes
+         FROM posto_combustiveis pc JOIN combustiveis c ON c.id = pc.combustivel_id`,
+    );
+    expect(rows[0]!.nomes).toBe('GNV, Diesel S10, Gasolina Comum');
   });
 
   it('o modelo CSV pode ser importado como está', async () => {
