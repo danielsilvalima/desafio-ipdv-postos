@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { pool } from '../../db/pool.js';
 import { lerPaginacao } from '../../shared/http/paginacao.js';
+import { exportarPostosCsv } from './exportacao.js';
 import { listarPostos, ORDENACOES, type CampoOrdenacao } from './postos.repository.js';
 
 const TAMANHO_MAXIMO_BUSCA = 100;
@@ -26,4 +27,23 @@ postosRouter.get('/', async (req, res) => {
       ordem: req.query.ordem === 'desc' ? 'desc' : 'asc',
     }),
   );
+});
+
+postosRouter.get('/export.csv', async (_req, res) => {
+  const nomeArquivo = `postos-${new Date().toISOString().slice(0, 10)}.csv`;
+
+  try {
+    await exportarPostosCsv(pool, res, () => {
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${nomeArquivo}"`);
+    });
+  } catch (err) {
+    // Falha ao conectar acontece antes do pipeline: a resposta está intacta e vira JSON pelo handler central.
+    if (!res.headersSent && !res.destroyed) throw err;
+    // Com o download em andamento só resta interrompê-lo. Cliente que cancelou não é erro do servidor.
+    if ((err as { code?: string }).code !== 'ERR_STREAM_PREMATURE_CLOSE') {
+      console.error('[export] falha durante a exportação:', err);
+    }
+    res.destroy();
+  }
 });

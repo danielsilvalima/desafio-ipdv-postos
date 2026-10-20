@@ -23,7 +23,13 @@ export const notFoundHandler: RequestHandler = (req, _res, next) => {
   next(new AppError(404, 'ROTA_NAO_ENCONTRADA', `Rota não encontrada: ${req.method} ${req.path}`));
 };
 
-export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
+export const errorHandler: ErrorRequestHandler = (err, _req, res, next) => {
+  // Resposta já começou (ex.: download em andamento): o Express encerra a conexão.
+  if (res.headersSent) {
+    next(err);
+    return;
+  }
+
   if (err instanceof AppError) {
     res.status(err.status).json({ error: { code: err.code, message: err.message, details: err.details } });
     return;
