@@ -92,6 +92,7 @@ O cenário que guiou o desenho: alguém importa uma planilha com centenas de lin
 - O cabeçalho é comparado sem diferenciar caixa, acentos, espaços e hífens: "Nome Posto" e "NOME_POSTO" valem como `nome_posto`. Colunas obrigatórias ausentes bloqueiam o arquivo. Colunas desconhecidas geram aviso e a tela sugere que pode ser erro de digitação.
 - Planilhas Excel (`.xlsx` e `.xls`) são reconhecidas pela assinatura do arquivo, e a mensagem explica como salvar como CSV.
 - Datas aceitas: `dd/mm/aaaa`, `aaaa-mm-dd`, variações com `-` ou `.` e o número serial do Excel. Datas inexistentes (`31/02/2020`) e anos com 2 dígitos são recusados.
+- Bairro, município, nome e cargo do responsável digitados todos em maiúsculas ou todos em minúsculas viram nome próprio: `CAMPINAS` e `campinas` são gravados como `Campinas`, e `SAO JOSE DOS CAMPOS` como `Sao Jose dos Campos`, com os conectivos (de, da, do, dos, das, e) em minúsculas. Sem isso, a listagem e a exportação mostrariam "Campinas" e "campinas" como se fossem cidades diferentes. Texto que já mistura maiúsculas e minúsculas é mantido como veio, porque a grafia foi uma escolha de quem digitou. Acentos não são acrescentados, para não adivinhar dado. Razão social, nome fantasia e logradouro ficam de fora, porque siglas como "LTDA", "ACM" e "SHN" se perderiam. Com mais tempo, o município viraria um cadastro com a tabela do IBGE, que daria a grafia oficial e permitiria conferir se o município pertence à UF.
 - Limite de 20 MB por arquivo. Um CSV de 10 mil postos tem cerca de 3 MB.
 
 ## 10. Exportação em streaming
@@ -137,7 +138,7 @@ A primeira versão levava 5,5 s para reimportar 10 mil postos. A medição mostr
 
 ## 14. Testes
 
-- Vitest no backend: 174 testes, entre unitários (validadores, leitura do CSV, cabeçalho, preparação) e de integração pela API com Supertest.
+- Vitest no backend: 180 testes, entre unitários (validadores, leitura do CSV, cabeçalho, preparação) e de integração pela API com Supertest.
 - Os testes de integração rodam contra **PostgreSQL real** num banco separado (`postos_test`), não contra mocks. Upsert, `ON CONFLICT`, `unaccent`, streaming e transações são justamente o que precisa ser testado, e um mock não pegaria erro de SQL.
 - O banco de teste só é aceito se o nome terminar em `_test`, porque as tabelas são limpas a cada teste.
 

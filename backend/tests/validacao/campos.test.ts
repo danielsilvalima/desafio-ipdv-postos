@@ -7,7 +7,7 @@ import {
   separarCombustiveis,
 } from '../../src/modules/importacao/validacao/dominio.js';
 import { normalizarInteiroNaoNegativo } from '../../src/modules/importacao/validacao/numeros.js';
-import { chaveNormalizada, limparTexto } from '../../src/modules/importacao/validacao/texto.js';
+import { ajustarCaixa, chaveNormalizada, limparTexto } from '../../src/modules/importacao/validacao/texto.js';
 
 describe('limparTexto', () => {
   it('remove espaços nas pontas, repetidos e espaço não separável', () => {
@@ -22,6 +22,41 @@ describe('limparTexto', () => {
 
   it('preserva quebras de linha internas', () => {
     expect(limparTexto(' linha 1 \r\n  linha 2 ')).toBe('linha 1\nlinha 2');
+  });
+});
+
+describe('ajustarCaixa', () => {
+  it('transforma texto todo em minúsculas ou todo em maiúsculas em nome próprio', () => {
+    expect(ajustarCaixa('campinas')).toBe('Campinas');
+    expect(ajustarCaixa('CAMPINAS')).toBe('Campinas');
+    expect(ajustarCaixa('SÃO PAULO')).toBe('São Paulo');
+    expect(ajustarCaixa('belo horizonte')).toBe('Belo Horizonte');
+  });
+
+  it('mantém conectivos em minúsculas, exceto na primeira palavra', () => {
+    expect(ajustarCaixa('SAO JOSE DOS CAMPOS')).toBe('Sao Jose dos Campos');
+    expect(ajustarCaixa('maria da silva e souza')).toBe('Maria da Silva e Souza');
+    expect(ajustarCaixa('GERENTE DE POSTO')).toBe('Gerente de Posto');
+    expect(ajustarCaixa('DO NORTE')).toBe('Do Norte');
+  });
+
+  it('trata hífen, apóstrofo, números e numerais romanos', () => {
+    expect(ajustarCaixa('EMBU-GUAÇU')).toBe('Embu-Guaçu');
+    expect(ajustarCaixa("SANTA BARBARA D'OESTE")).toBe("Santa Barbara d'Oeste");
+    expect(ajustarCaixa('setor t-63')).toBe('Setor T-63');
+    expect(ajustarCaixa('JARDIM SAO PAULO II')).toBe('Jardim Sao Paulo II');
+  });
+
+  it('mantém texto que já mistura maiúsculas e minúsculas', () => {
+    expect(ajustarCaixa('Campinas')).toBe('Campinas');
+    expect(ajustarCaixa('SHN Quadra 2')).toBe('SHN Quadra 2');
+    expect(ajustarCaixa('caxias do Sul')).toBe('caxias do Sul');
+  });
+
+  it('não altera texto sem letras e aplicado duas vezes dá o mesmo resultado', () => {
+    expect(ajustarCaixa('1200')).toBe('1200');
+    const ajustado = ajustarCaixa('SAO JOSE DOS CAMPOS');
+    expect(ajustarCaixa(ajustado)).toBe(ajustado);
   });
 });
 

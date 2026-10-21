@@ -11,7 +11,7 @@ import {
 } from './dominio.js';
 import { montarOcorrencia, type Ocorrencia } from './mensagens.js';
 import { normalizarInteiroNaoNegativo } from './numeros.js';
-import { limparTexto } from './texto.js';
+import { ajustarCaixa, limparTexto } from './texto.js';
 import { falha, sucesso, type ResultadoCampo } from './tipos.js';
 
 export type LinhaBruta = Partial<Record<NomeColuna, string>>;
@@ -48,6 +48,11 @@ export type ResultadoLinha =
 
 function textoLivre(valor: string): ResultadoCampo<string> {
   return sucesso(valor);
+}
+
+/** Nomes de lugar e de pessoa. Razão social e logradouro ficam fora por causa de siglas ("LTDA", "SHN Quadra 2"). */
+function nomeProprio(valor: string): ResultadoCampo<string> {
+  return sucesso(ajustarCaixa(valor));
 }
 
 /**
@@ -89,14 +94,14 @@ export function validarLinha(linha: LinhaBruta): ResultadoLinha {
   const logradouro = campo('logradouro', textoLivre);
   const numero = campo('numero', textoLivre);
   const complemento = campo('complemento', textoLivre);
-  const bairro = campo('bairro', textoLivre);
-  const municipio = campo('municipio', textoLivre);
+  const bairro = campo('bairro', nomeProprio);
+  const municipio = campo('municipio', nomeProprio);
   const uf = campo('uf', normalizarUf);
   const cep = campo('cep', (v) => normalizarDocumento('cep', v));
   const cpf = campo('cpf_responsavel', (v) => normalizarDocumento('cpf', v));
-  const nomeResponsavel = campo('nome_responsavel', textoLivre);
+  const nomeResponsavel = campo('nome_responsavel', nomeProprio);
   const email = campo('email_responsavel', normalizarEmail);
-  const cargo = campo('cargo_responsavel', textoLivre);
+  const cargo = campo('cargo_responsavel', nomeProprio);
   const combustiveis = campo('combustiveis', separarCombustiveis);
   const status = campo('status', normalizarStatus);
   const dataInauguracao = campo('data_inauguracao', normalizarData);

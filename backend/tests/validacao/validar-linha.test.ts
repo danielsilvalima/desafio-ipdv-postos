@@ -62,6 +62,28 @@ describe('validarLinha', () => {
     expect(resultado.avisos.map((a) => a.codigo)).toEqual(['CNPJ_NOTACAO_CIENTIFICA']);
   });
 
+  it('ajusta maiúsculas só em bairro, município, nome e cargo do responsável', () => {
+    const resultado = validarLinha({
+      ...linhaValida,
+      nome_posto: 'POSTO CAMPINAS LTDA',
+      logradouro: 'AVENIDA ACM',
+      bairro: 'JARDIM GUANABARA',
+      municipio: 'campinas',
+      nome_responsavel: 'CARLOS SOUZA DE CARVALHO',
+      cargo_responsavel: 'supervisor de operações',
+    });
+
+    expect(resultado.valido).toBe(true);
+    if (!resultado.valido) return;
+    expect(resultado.posto).toMatchObject({
+      razaoSocial: 'POSTO CAMPINAS LTDA',
+      logradouro: 'AVENIDA ACM',
+      bairro: 'Jardim Guanabara',
+      municipio: 'Campinas',
+      responsavel: { nome: 'Carlos Souza de Carvalho', cargo: 'Supervisor de Operações' },
+    });
+  });
+
   it('transforma campos opcionais vazios em null', () => {
     const resultado = validarLinha({
       ...linhaValida,
