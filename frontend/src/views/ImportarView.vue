@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { ErroApi } from '@/api/cliente';
 import { importarCsv, URL_MODELO_CSV } from '@/api/importacoes';
 import type { DetalhesErroArquivo, RelatorioImportacao as Relatorio } from '@/api/tipos';
@@ -19,6 +19,12 @@ const topo = ref<HTMLElement | null>(null);
 const areaErro = ref<HTMLElement | null>(null);
 
 const processando = computed(() => etapa.value === 'envio' && progressoEnvio.value >= 100);
+
+// O erro da tentativa anterior não vale para o arquivo novo.
+watch(arquivo, () => {
+  erroArquivo.value = null;
+  erroGeral.value = null;
+});
 
 async function enviar() {
   if (!arquivo.value) return;
